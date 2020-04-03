@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/", internal.Handler)
+	http.HandleFunc("/", config.Handler)
 	bind := fmt.Sprintf("%s:%d", config.Address, config.Port)
 	log.Fatal(http.ListenAndServe(bind, nil))
 }
