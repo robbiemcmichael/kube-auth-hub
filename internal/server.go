@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Handler(w http.ResponseWriter, r *http.Request) {
+func (c *Config) Handler(w http.ResponseWriter, r *http.Request) {
 	response := auth.TokenReview{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: auth.SchemeGroupVersion.String(),
@@ -18,7 +18,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if identity, err := fromRequest(r); err != nil {
+	if identity, err := c.fromRequest(r); err != nil {
 		log.Info(err)
 		response.Status = auth.TokenReviewStatus{
 			Authenticated: false,
@@ -39,7 +39,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func fromRequest(r *http.Request) (Identity, error) {
+func (c *Config) fromRequest(r *http.Request) (Identity, error) {
 	decoder := json.NewDecoder(r.Body)
 
 	var tokenReview auth.TokenReview
@@ -47,7 +47,7 @@ func fromRequest(r *http.Request) (Identity, error) {
 		return Identity{}, fmt.Errorf("decode request body: %v", err)
 	}
 
-	identity, err := validate(tokenReview.Spec.Token)
+	identity, err := c.validate(tokenReview.Spec.Token)
 	if err != nil {
 		return Identity{}, err
 	}

@@ -13,7 +13,7 @@ type Identity struct {
 	Groups   []string
 }
 
-func validate(tokenString string) (Identity, error) {
+func (c *Config) validate(tokenString string) (Identity, error) {
 	token, err := jwt.ParseSigned(tokenString)
 	if err != nil {
 		return Identity{}, fmt.Errorf("parse JWT: %v", err)
@@ -22,6 +22,21 @@ func validate(tokenString string) (Identity, error) {
 	var publicClaims jwt.Claims
 	if err := token.UnsafeClaimsWithoutVerification(&publicClaims); err != nil {
 		return Identity{}, err
+	}
+
+	found := Issuer{}
+	for _, i := range c.Issuers {
+		if i.Issuer == publicClaims.Issuer {
+			var ignore jwt.Claims
+			if err := token.Claims(i.PublicKey, &ignore); err == nil {
+				found = i
+				break
+			}
+		}
+	}
+
+	if found.Issuer == "" {
+		return Identity{}, fmt.Errorf("failed to find issuer with matching public key")
 	}
 
 	expected := jwt.Expected{
@@ -56,9 +71,9 @@ func fromClaims(token jwt.JSONWebToken) (Identity, error) {
 		return Identity{}, fmt.Errorf("failed to cast %q claim to string", "sub")
 	}
 
-	username, ok := claimsMap["name"].(string)
+	username, ok := claimsMap["username"].(string)
 	if !ok {
-		return Identity{}, fmt.Errorf("failed to cast %q claim to string", "name")
+		return Identity{}, fmt.Errorf("failed to cast %q claim to string", "username")
 	}
 
 	interfaceArray, ok := claimsMap["groups"].([]interface{})
