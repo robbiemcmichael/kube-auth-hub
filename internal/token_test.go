@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -58,10 +59,18 @@ func TestValidate(t *testing.T) {
 		return
 	}
 
+	tpl := IdentityTemplate{
+		UID:         createTemplate("UID", "{{ .sub }}"),
+		Username:    createTemplate("Username", "{{ .username }}"),
+		Group:       createTemplate("Group", "{{ . }}"),
+		GroupsField: "groups",
+	}
+
 	issuer := Issuer{
 		Name:      "name",
 		Issuer:    "issuer",
 		PublicKey: key.Public(),
+		Template:  tpl,
 	}
 
 	config := Config{
@@ -86,4 +95,8 @@ func TestValidate(t *testing.T) {
 		t.Errorf("token identity did not match expected value:\n%s", cmp.Diff(expected, identity))
 		return
 	}
+}
+
+func createTemplate(name string, t string) *template.Template {
+	return template.Must(template.New(name).Option("missingkey=error").Parse(t))
 }

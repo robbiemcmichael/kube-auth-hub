@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"bytes"
 	"fmt"
 	"time"
 
@@ -47,7 +48,7 @@ func (c *Config) validate(tokenString string) (Identity, error) {
 		return Identity{}, err
 	}
 
-	identity, err := fromClaims(*token)
+	identity, err := fromClaims(*token, found.Template)
 	if err != nil {
 		return Identity{}, err
 	}
@@ -55,7 +56,7 @@ func (c *Config) validate(tokenString string) (Identity, error) {
 	return identity, nil
 }
 
-func fromClaims(token jwt.JSONWebToken) (Identity, error) {
+func fromClaims(token jwt.JSONWebToken, template IdentityTemplate) (Identity, error) {
 	var claims interface{}
 	if err := token.UnsafeClaimsWithoutVerification(&claims); err != nil {
 		return Identity{}, err
@@ -66,34 +67,34 @@ func fromClaims(token jwt.JSONWebToken) (Identity, error) {
 		return Identity{}, fmt.Errorf("failed to cast JWT claims to map[string]interface{}")
 	}
 
-	uid, ok := claimsMap["sub"].(string)
-	if !ok {
-		return Identity{}, fmt.Errorf("failed to cast %q claim to string", "sub")
+	var uid bytes.Buffer
+	if err := template.UID.Execute(&uid, claimsMap); err != nil {
+		return Identity{}, fmt.Errorf("%v", err)
 	}
 
-	username, ok := claimsMap["username"].(string)
-	if !ok {
-		return Identity{}, fmt.Errorf("failed to cast %q claim to string", "username")
+	var username bytes.Buffer
+	if err := template.Username.Execute(&username, claimsMap); err != nil {
+		return Identity{}, fmt.Errorf("%v", err)
 	}
 
-	interfaceArray, ok := claimsMap["groups"].([]interface{})
+	groupsArray, ok := claimsMap[template.GroupsField].([]interface{})
 	if !ok {
-		return Identity{}, fmt.Errorf("failed to cast %q claim to array", "groups")
+		return Identity{}, fmt.Errorf("failed to cast %q claim to array", template.GroupsField)
 	}
 
-	groups := make([]string, len(interfaceArray))
-	for i, v := range interfaceArray {
-		group, ok := v.(string)
-		if !ok {
-			return Identity{}, fmt.Errorf("failed to cast group to string: %v", v)
+	groups := make([]string, len(groupsArray))
+	for i, v := range groupsArray {
+		var group bytes.Buffer
+		if err := template.Group.Execute(&group, v); err != nil {
+			return Identity{}, fmt.Errorf("%v", err)
 		}
 
-		groups[i] = group
+		groups[i] = group.String()
 	}
 
 	identity := Identity{
-		UID:      uid,
-		Username: username,
+		UID:      uid.String(),
+		Username: username.String(),
 		Groups:   groups,
 	}
 
