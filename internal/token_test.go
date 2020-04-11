@@ -67,10 +67,11 @@ func TestValidate(t *testing.T) {
 	}
 
 	issuer := Issuer{
-		Name:      "name",
-		Issuer:    "issuer",
-		PublicKey: key.Public(),
-		Template:  tpl,
+		Name:          "name",
+		Issuer:        "issuer",
+		PublicKey:     "filepath",
+		Template:      tpl,
+		PublicKeyData: key.Public(),
 	}
 
 	config := Config{

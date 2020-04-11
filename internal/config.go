@@ -1,7 +1,10 @@
 package internal
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"text/template"
 )
 
@@ -14,8 +17,10 @@ type Config struct {
 type Issuer struct {
 	Name      string           `yaml:"name"`
 	Issuer    string           `yaml:"issuer"`
-	PublicKey interface{}      `yaml:"publicKey"`
+	PublicKey string           `yaml:"publicKey"`
 	Template  IdentityTemplate `yaml:"template"`
+
+	PublicKeyData interface{}
 }
 
 type IdentityTemplate struct {
@@ -23,6 +28,36 @@ type IdentityTemplate struct {
 	Username    *template.Template
 	Group       *template.Template
 	GroupsField string
+}
+
+func (issuer *Issuer) parsePublicKey() error {
+	contents, err := ioutil.ReadFile(issuer.PublicKey)
+	if err != nil {
+		return err
+	}
+
+	block, _ := pem.Decode(contents)
+	if block == nil {
+		return fmt.Errorf("failed to read PEM block")
+	}
+
+	key, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	issuer.PublicKeyData = key
+	return nil
+}
+
+func (issuer *Issuer) GetPublicKey() (interface{}, error) {
+	if issuer.PublicKeyData == nil {
+		if err := issuer.parsePublicKey(); err != nil {
+			return nil, err
+		}
+	}
+
+	return issuer.PublicKeyData, nil
 }
 
 func (x *IdentityTemplate) UnmarshalYAML(unmarshal func(interface{}) error) error {
