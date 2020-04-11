@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
@@ -28,8 +29,14 @@ func (c *Config) validate(tokenString string) (Identity, error) {
 	found := Issuer{}
 	for _, i := range c.Issuers {
 		if i.Issuer == publicClaims.Issuer {
+			publicKey, err := i.GetPublicKey()
+			if err != nil {
+				log.Warnf("get public key for issuer %q: %v", i.Name, err)
+				continue
+			}
+
 			var ignore jwt.Claims
-			if err := token.Claims(i.PublicKey, &ignore); err == nil {
+			if err := token.Claims(publicKey, &ignore); err == nil {
 				found = i
 				break
 			}
