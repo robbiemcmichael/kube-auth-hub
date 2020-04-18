@@ -59,7 +59,11 @@ func TestValidate(t *testing.T) {
 		return
 	}
 
-	tpl := IdentityTemplate{
+	pubkey := PublicKey{
+		Data: key.Public(),
+	}
+
+	template := IdentityTemplate{
 		UID:         createTemplate("UID", "{{ .sub }}"),
 		Username:    createTemplate("Username", "{{ .username }}"),
 		Group:       createTemplate("Group", "{{ . }}"),
@@ -67,11 +71,10 @@ func TestValidate(t *testing.T) {
 	}
 
 	issuer := Issuer{
-		Name:          "name",
-		Issuer:        "issuer",
-		PublicKey:     "filepath",
-		Template:      tpl,
-		PublicKeyData: key.Public(),
+		Name:      "name",
+		Issuer:    "issuer",
+		PublicKey: pubkey,
+		Template:  template,
 	}
 
 	config := Config{
