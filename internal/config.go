@@ -17,10 +17,12 @@ type Config struct {
 type Issuer struct {
 	Name      string           `yaml:"name"`
 	Issuer    string           `yaml:"issuer"`
-	PublicKey string           `yaml:"publicKey"`
+	PublicKey PublicKey        `yaml:"publicKey"`
 	Template  IdentityTemplate `yaml:"template"`
+}
 
-	PublicKeyData interface{}
+type PublicKey struct {
+	Data interface{}
 }
 
 type IdentityTemplate struct {
@@ -30,8 +32,14 @@ type IdentityTemplate struct {
 	GroupsField string
 }
 
-func (issuer *Issuer) parsePublicKey() error {
-	contents, err := ioutil.ReadFile(issuer.PublicKey)
+func (x *PublicKey) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var file string
+
+	if err := unmarshal(&file); err != nil {
+		return fmt.Errorf("unmarshal public key file path: %v", err)
+	}
+
+	contents, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
 	}
@@ -46,18 +54,9 @@ func (issuer *Issuer) parsePublicKey() error {
 		return err
 	}
 
-	issuer.PublicKeyData = key
+	x.Data = key
+
 	return nil
-}
-
-func (issuer *Issuer) GetPublicKey() (interface{}, error) {
-	if issuer.PublicKeyData == nil {
-		if err := issuer.parsePublicKey(); err != nil {
-			return nil, err
-		}
-	}
-
-	return issuer.PublicKeyData, nil
 }
 
 func (x *IdentityTemplate) UnmarshalYAML(unmarshal func(interface{}) error) error {
